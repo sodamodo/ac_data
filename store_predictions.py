@@ -1,6 +1,7 @@
 from database import get_cur
 import requests
 import random 
+from time import sleep
 
 base_url = "https://api.actransit.org/transit/stops/{}/predictions/?token=03398D26A0BBF79AF14C6351C6ADFF77"
 
@@ -47,12 +48,15 @@ def submit_prediction_data(predictions):
 
         cur.execute(sql_string)
 
-stop_id = get_stop_id()
-print(stop_id)
-try:
-    predictions = get_prediction_data()
-    submit_prediction_data(predictions)
 
-except:
-    print("no prediction or malformed data")
+truth = True
 
+while(truth):
+    stop_id = get_stop_id()
+    try:
+        predictions = get_prediction_data(stop_id)
+        submit_prediction_data(predictions)
+
+    except:
+        print("no prediction or malformed data")
+    sleep(3)
