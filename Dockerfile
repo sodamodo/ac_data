@@ -1,16 +1,18 @@
 FROM ubuntu
 
-
+RUN mkdir -p /app
 RUN apt-get update && apt-get -y install cron python3-pip
 
 COPY requirements.txt requirements.txt
-COPY store_locations.py store_locations.py
-COPY store_predictions.py store_predictions.py
-COPY database.py database.py
-COPY entrypoint.sh entrypoint.sh
-RUN ["chmod", "+x", "entrypoint.sh"]
 RUN pip3 install -r requirements.txt
-ENTRYPOINT [ "entrypoint.sh" ]
+
+
+COPY . /app
+WORKDIR /app
+# RUN ["chmod", "+x", "entrypoint.sh"]
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT [ "./entrypoint.sh" ]
 
 
 # Add crontab file in the cron directory
