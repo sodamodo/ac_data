@@ -1,3 +1,5 @@
+from ast import literal_eval
+
 class Vehicle:
     def __init__(self, vehicle_array):
         self.id = vehicle_array[0]
@@ -20,4 +22,4 @@ class Stop:
         self.stop_id = stop_array[3]
         self.stp_descri = stop_array[4]
         self.route = stop_array[5]
-        self.json_routes = stop_array[6]
+        self.json_routes = literal_eval(stop_array[6])

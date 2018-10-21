@@ -2,14 +2,23 @@ import requests
 import psycopg2
 from google.transit import gtfs_realtime_pb2
 from database import get_cur
+import csv
 
 cur = get_cur()
-base_url = "https://api.actransit.org/transit/gtfsrt/vehicles/?token=369BB8F6542E51FF57BC06577AFE829C"
 
-feed = gtfs_realtime_pb2.FeedMessage()
-response = requests.get(base_url)
-feed.ParseFromString(response.content)
+cur.execute("SELECT * FROM stops")
+stops = cur.fetchall()
 
-for entity in feed.entity:
-    print(entity)
-    break
+
+# with open('stops.csv', "w") as file:
+#     writer = csv.writer(file, delimiter=',')
+#     for stop in stops:
+#         print(stop)
+#         writer.writerow(stop)
+
+with open('stops.csv', "r") as file:
+    reader = csv.reader(file, delimiter=',')
+    for row in reader:
+        print(row)
+        break
+print("donzo!")
