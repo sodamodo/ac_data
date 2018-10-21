@@ -1,53 +1,69 @@
 import requests
 import psycopg2
 from google.transit import gtfs_realtime_pb2
+from models import Stop, Vehicle
 from database import get_cur
 import re
 import json
 cur = get_cur()
 
-cur.execute(
-    """
-    SELECT * FROM stops LIMIT 100;
-    """
 
-)
 
-stops_list = cur.fetchall()
-# print(stops_list)
 
-for stop in stops_list:
-    stop_id = stop[3]
-    route_set = stop[5]
+#This gets all the vehicles and puts them into an array of objects.
+def populate_vehicles(cur):
+    cur.execute("SELECT * FROM rapidsubset;")
+    vehicles = []
+    vehicles_table = cur.fetchall()
+    for vehicles_row in vehicles_table:
+        vehicle = Vehicle(vehicles_row)
+        vehicles.append(vehicle)
+    return vehicles
+
+def get_stops_on_route(cur, vehicle):
+    stops_on_route = []
+    stops = []
+    cur.execute("SELECT * FROM stops;")
+    stops_table = cur.fetchall()
+    for stops_row in stops_table:
+        stop = Stop(stops_row)
+        stops.append(stop)
+        
+    for stop in stops:
+        for route in stop.json_routes:
+            # print(stop_route)
+            if vehicle.route_id == route:
+                stops_on_route.append(stop)
+
     
-    route_array = route_set.split(" ")
-    # master_array.append(master_array[1].split(" "))
-    for n in route_array:
-        if n.isdigit() == False:
-            route_array.remove(n)
+    return stops_on_route
+            
 
-    print("array of numbered routes", route_array)
-    print("string of json route number arrays for SQL insertion", json.dumps(route_array))
+# Now we have a list of the stops for the route the vehicle is on
+# Geom is at stop[2]
+def get_distance_from_stop(cur, vehicle, stop):
+   
+    sql_string = """
+                SELECT ST_Distance('{vehicle_location}'::geography, '{stop_location}'::geography)
+                """.format(vehicle_location=vehicle.loc, stop_location=stop.geom)
+    cur.execute(sql_string)
+    return cur.fetchall()[0]
 
 
-
-    # num_only = m.group(0)
-    # # print("route list string with no letters: ", num_only)
-    # route_array = num_only.split(" ")
-    # if ''  in route_array:
-    #     route_array.remove('')
-    # if len(route_array) > 1:
-    #     print("this route array has multiple", route_array)
+vehicles = populate_vehicles(cur)
+vehicle_map = {}
+for vehicle in vehicles:
+    vehicle_map[vehicle] = []
+    stops = get_stops_on_route(cur, vehicle)
+    for stop in stops:
+        vehicle_map[vehicle].append(get_distance_from_stop(cur, vehicle, stop))
+    print("cycled!")    
     
 
-# routes_list = cur.fetchall()
 
-# for i in routes_list:
-#     route_set = i[0]
-#     m = re.search('\d*\s*', route_set)
-#     num_only =  
-# print(routes_list)
 
-# WITH (SELECT * FROM vehicles_copy WHERE id = '2ddd9b66-8975-4830-8328-c2195620162d') AS vehicle 
 
-# SELECT * FROM routes WHERE 
+
+
+
+
