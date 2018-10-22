@@ -21,7 +21,7 @@ for stops_row in stops_table:
 
 #This gets all the vehicles and puts them into an array of objects.
 def populate_vehicles(cur):
-    cur.execute("SELECT * FROM rapidsubset LIMIT 100;")
+    cur.execute("SELECT * FROM hoursanpablosubset;")
     vehicles = []
     vehicles_table = cur.fetchall()
     for vehicles_row in vehicles_table:
@@ -29,6 +29,7 @@ def populate_vehicles(cur):
         vehicles.append(vehicle)
     return vehicles
 
+#This is confusing with get_stops_for_route, need to rename to be less confusing 
 def get_stops_on_route(cur, vehicle, stops):
     stops_on_route = []
     for stop in stops:
@@ -41,38 +42,86 @@ def get_stops_on_route(cur, vehicle, stops):
     return stops_on_route
             
 
-# Now we have a list of the stops for the route the vehicle is on
-# Geom is at stop[2]
 def get_distance_from_stop(cur, vehicle, stop):
    
-    
     vehicle_point = wkb.loads(vehicle.loc, hex=True)
     stop_point = wkb.loads(stop.geom, hex=True)
     distance = vincenty((vehicle_point.y, vehicle_point.x), (stop_point.y, stop_point.x)).m
-
-    # sql_string = """
-    #             SELECT ST_Distance('{vehicle_location}'::geography, '{stop_location}'::geography)
-    #             """.format(vehicle_location=vehicle.loc, stop_location=stop.geom)
-    # cur.execute(sql_string)
-    # distance = cur.fetchall()[0]
-    # print("distance: ", distance)
     return distance
     
-
-
-vehicles = populate_vehicles(cur)
-# vehicle_map = defaultdict(list)
-vehicle_map = {}
-for vehicle in vehicles:
+def get_closest_stop_on_route(vehicle):
+    stop_dist_dict = {vehicle: {}}
     distance_list = []
     stops_on_route = get_stops_on_route(cur, vehicle, stops)
     for stop in stops_on_route:
-        distance_list.append(get_distance_from_stop(cur, vehicle, stop))
-        vehicle_map[vehicle] = min(distance_list)
-        # print("distance stop<-->vehicle", dist)
+        # distance_list.append(get_distance_from_stop(cur, vehicle, stop))
+        stop_dist_dict[vehicle][stop.stop_id] = get_distance_from_stop(cur, vehicle, stop)
+
+    return stop_dist_dict
+
+
+# Calls san pablo hour
+vehicles = populate_vehicles(cur)
+
+# Uses first bus point is 72R bus array to get all the 72R
+# stops out of the JSON list
+# stops_on_spr = get_stops_on_route(cur, vehicles[0], stops)
+# for stop in stops_on_spr:
+
+#     sql_string = """
+
+#         INSERT INTO sanpablorapidstops (SELECT * FROM stops WHERE stop_id={})
+#     """.format(stop.stop_id)
+#     cur.execute(sql_string)
+
+
+
+for vehicle in vehicles:
+    
+    if vehicle.speed == 0:
+        stop_dist_dict = get_closest_stop_on_route(vehicle)
+        # closest_stop is stop_id and closest_stop[1] is distance
+        closest_stop = min(stop_dist_dict[vehicle].items(), key=lambda kv: kv[1])
+        if closest_stop[1] < 25:
+            # print("python datatype for timestamp field", type(vehicle.timestamp))
+            sql_string = """
+            INSERT INTO hoursanpablosubsetstopped VALUES('{id}', '{trip_id}', '{start_time}', '{start_date}',
+                                        '{route_id}', '{loc}', 
+                                        '{bearing}', '{speed}', '{vehicle_id}', '{timestamp}')
+
+            """.format(
+                id=vehicle.id,
+                trip_id=vehicle.trip_id,
+                start_time=vehicle.start_time,
+                start_date=vehicle.start_date,
+                route_id=vehicle.route_id,
+                loc=vehicle.loc,
+                bearing=vehicle.bearing,
+                speed=vehicle.speed,
+                timestamp=vehicle.timestamp,
+                vehicle_id=vehicle.vehicle_id
+            )
+            cur.execute(sql_string)
+            print("unpack closest stop", closest_stop)
+            print("stop dict", stop_dist_dict)
+            print("closest stop", closest_stop)
+
+        else:
+            print("need moar data")
+
+
+
+# vehicle_map = {}
+# for vehicle in vehicles:
+#     distance_list = []
+#     stops_on_route = get_stops_on_route(cur, vehicle, stops)
+#     for stop in stops_on_route:
+#         distance_list.append(get_distance_from_stop(cur, vehicle, stop))
+#         vehicle_map[vehicle] = min(distance_list)
+#         # print("distance stop<-->vehicle", dist)
         
-    sorted_by_value = sorted(vehicle_map.items(), key=lambda kv: kv[1])
-    print(sorted_by_value)
+#     sorted_by_value = sorted(vehicle_map.items(), key=lambda kv: kv[1])
+#     print(sorted_by_value)
 
 
 
